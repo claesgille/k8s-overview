@@ -4,7 +4,7 @@ title: Kubernetes
 theme: gaia
 author: Claes Gille
 header: ![w:200px](images/kubernetes-horizontal-color.png)
-footer: Claes Gille
+footer: Claes Gille 2021 https://github.com/claesgille/k8s-overview
 ---
 
 <style>
@@ -73,13 +73,14 @@ Tillgängligt hos de flesta molntjänstleverantörer och on premise
 * Kan installeras lokalt på Linux (krångligt)
 
 ----
-<div align="center">
-
 # Delar i ett k8s kluster
 
-</divs>
+<div align="center">
 
 ![w:800px center](images/clusters.png)
+
+</div>
+
 
 ---
 
@@ -165,19 +166,160 @@ spec:
 
 # Service
 
+<div class="twocols">
+
+* Exponerar appar från nätet
+* Fyra typer av Service: ClusterIp, NodePort, Loadbalancer och ExternalName
+* Man kan ochså använda en Ingress för att exponera en Service 
+
+<p class="break"></p>
+
+<span style="font-size:68%">
+
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-service
+spec:
+  selector:
+    app: MyApp
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 9376
+  type: ClusterIp
+```
+</span>
+
 ---
 
-# PerstentVolume & PerstistentVolumeClaim
+# PersistentVolume & PerstistentVolumeClaim
+
+<div class="twocols">
 
 * Storage class (typ av persistent lagring)
+* pv definierar lagring
+* pvc reserverar lagring från pv
+* Många typer av StorageClass beror på kluster
+
+<p class="break"></p>
+
+<span style="font-size:46%">
+
+```
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: foo-pv
+spec:
+  capacity:
+    storage: 5Gi
+  volumeMode: Filesystem
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: local
+  claimRef:
+    name: foo-pvc
+    namespace: foo
+  ...
+
+  apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: foo-pvc
+  namespace: foo
+spec:
+  storageClassName: "" 
+  ...
+
+  ```
+  </span>
+
+
 
 ---
 
 # StatefulSet - stateful apps
 
+<div class="twocols">
+
+* Stateful applikationer (db, cache etc)
+* Parar instanser med persistenta volymer
+* Kan startas om utan att tappa data
+
+<p class="break"></p>
+
+<span style="font-size:44%">
+
+```
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: web
+spec:
+  selector:
+    matchLabels:
+      app: nginx # has to match .spec.template.metadata.labels
+  serviceName: "nginx"
+  replicas: 3 # by default is 1
+  template:
+    metadata:
+      labels:
+        app: nginx # has to match .spec.selector.matchLabels
+    spec:
+      terminationGracePeriodSeconds: 10
+      containers:
+      - name: nginx
+        image: k8s.gcr.io/nginx-slim:0.8
+        ports:
+        - containerPort: 80
+          name: web
+        volumeMounts:
+        - name: www
+          mountPath: /usr/share/nginx/html
+  volumeClaimTemplates:
+  - metadata:
+      name: www
+    spec:
+      accessModes: [ "ReadWriteOnce" ]
+      storageClassName: "my-storage-class"
+      resources:
+        requests:
+          storage: 1Gi
+```
+
 ---
 
 #  ConfigMap
+<div class="twocols">
+
+* Stateful applikationer (db, cache etc)
+
+<p class="break"></p>
+
+<span style="font-size:44%">
+
+```
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: game-demo
+data:
+  # property-like keys; each key maps to a simple value
+  player_initial_lives: "3"
+  ui_properties_file_name: "user-interface.properties"
+
+  # file-like keys
+  game.properties: |
+    enemy.types=aliens,monsters
+    player.maximum-lives=5    
+  user-interface.properties: |
+    color.good=purple
+    color.bad=yellow
+    allow.textmode=true
+```
+</span>
 
 ---
 
