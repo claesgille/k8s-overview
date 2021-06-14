@@ -86,7 +86,17 @@ Tillgängligt hos de flesta molntjänstleverantörer och on premise
 
 # Namespace
 
-![w:800px center](images/img-for-ns.png)
+<div class="twocols">
+
+* Avgränsar kluster i namnrymder
+* kube-system: används för k8s system processer
+* default: används om inget annat anges
+
+
+
+<p class="break"></p>
+
+![w:500px h:400px center](images/img-for-ns.png)
 
 ---
 
@@ -95,7 +105,7 @@ Tillgängligt hos de flesta molntjänstleverantörer och on premise
 * Konfigureras med yaml-filer som beskriver desired state
 * Det finns ett yaml format för varje typ av objekt i k8s
 * kubectl används för att skicka yaml filer till klustret
-* kubectl kan också användas för att hämta konfigurationer från klustret
+* kubectl kan också användas för att hämta konfigurationer från klustret och mycket annat
 
 Exempel hur man applicerar en yaml-fil på sitt kluster:
 
@@ -118,8 +128,9 @@ kubectl apply -f ./some-config.yaml
 # Pod
 
 * Applikationsinstans
-* Är en instans av en Deployment eller StatefulSet
-* Konfigurera sällan direkt, skapas internt ifrån ett annat objekt
+* Kan innehålla en eller flera containers
+* Är en instans av en Deployment, StatefulSet eller Job
+* Konfigureras sällan direkt, skapas internt ifrån ett annat objekt
 
 ---
 
@@ -135,30 +146,37 @@ kubectl apply -f ./some-config.yaml
 
 <p class="break"></p>
 
-<span style="font-size:68%">
+<span style="font-size:50%">
 
 ```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
+  name: my-deployment
   labels:
-    app.kubernetes.io/name: load-balancer-example
-  name: hello-world
+    app: my-app
 spec:
-  replicas: 5
   selector:
     matchLabels:
-      app.kubernetes.io/name: load-balancer-example
+      app: my-app
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: load-balancer-example
+        app: my-app
     spec:
       containers:
-      - image: gcr.io/google-samples/node-hello:1.0
-        name: hello-world
+      - name: app
+        image: gcr.io/google-samples/node-hello:1.0
         ports:
         - containerPort: 8080
+        volumeMounts:
+        - name: config
+          mountPath: /config
+      volumes:
+      - name: config
+        configMap:
+          name: example-configmap-1
+
 ```
 </span>
 
@@ -183,11 +201,11 @@ metadata:
   name: my-service
 spec:
   selector:
-    app: MyApp
+    app: my-app
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 9376
+      targetPort: 8080
   type: ClusterIp
 ```
 </span>
@@ -294,11 +312,16 @@ spec:
 #  ConfigMap
 <div class="twocols">
 
-* Stateful applikationer (db, cache etc)
+Tillhandahåller konfigurations parametrar till applikationer.
+
+* Container-kommando och argument
+* Miljövariabler
+* Konfig-filer
+* API-anrop från Pod
 
 <p class="break"></p>
 
-<span style="font-size:44%">
+<span style="font-size:68%">
 
 ```
 apiVersion: v1
@@ -325,3 +348,73 @@ data:
 
 # Secret
 
+<div class="twocols">
+
+* Fungerar som ConfigMaps
+* Ett flertal typer av säkerhets-parametrar
+* Hanterar inte krypterade värden
+
+
+<p class="break"></p>
+
+<span style="font-size:68%">
+
+```
+apiVersion: v1
+kind: Secret
+metadata:
+  name: secret-basic-auth
+type: kubernetes.io/basic-auth
+stringData:
+  username: admin
+  password: t0p-Secret
+
+---
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: secret-ssh-auth
+type: kubernetes.io/ssh-auth
+data:
+  # the data is abbreviated in this example
+  ssh-privatekey: |
+          MIIEpQIBAAKCAQEAulqb/Y ...
+
+```
+</span>
+
+---
+
+# Ingress
+
+<div class="twocols">
+
+* Hanterar extern access till Services i ett kluster.
+* Kan hantera lastbalansering, tsl-terminering och namnbaserad virtuell hosting.
+
+
+<p class="break"></p>
+
+<span style="font-size:68%">
+
+```
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: minimal-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /testpath
+        pathType: Prefix
+        backend:
+          service:
+            name: test
+            port:
+              number: 80
+```
+</span>
